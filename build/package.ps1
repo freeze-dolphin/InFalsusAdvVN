@@ -9,7 +9,6 @@
         manifest.json
         icon.png
         README.md
-        CHANGELOG.md
         LICENSE
         BepInEx/plugins/InFalsusAdvVN/InFalsusAdvVN.dll
 
@@ -167,7 +166,7 @@ try {
     $pluginDir = Join-Path (Join-Path $stage 'BepInEx\plugins') $packageName
     New-Item -ItemType Directory -Path $pluginDir -Force | Out-Null
 
-    $rootFiles = @('manifest.json', 'icon.png', 'README.md', 'CHANGELOG.md', 'LICENSE')
+    $rootFiles = @('manifest.json', 'icon.png', 'README.md', 'LICENSE')
     foreach ($file in $rootFiles) {
         $source = Join-Path $root $file
         if (-not (Test-Path $source)) {
@@ -223,7 +222,6 @@ try {
         'manifest.json',
         'icon.png',
         'README.md',
-        'CHANGELOG.md',
         "BepInEx/plugins/$packageName/$packageName.dll"
     )
 

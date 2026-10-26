@@ -17,7 +17,7 @@ namespace InFalsusAdvVN;
 public sealed class Plugin : BasePlugin
 {
     public const string Guid = "aria.infalsus.advvn";
-    public const string Version = "1.0.0";
+    public const string Version = "1.0.1";
 
     private const int RendererEnforceFrames = 120;
 
