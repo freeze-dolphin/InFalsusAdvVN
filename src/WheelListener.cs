@@ -27,6 +27,8 @@ internal static class WheelListener
     public static bool Installed { get; private set; }
 
     private static float _pending;
+    private static int _rightClicks;
+    private static int _lastButtons;
     private static Action<string> _log;
     private static int _reports;
     private static int _probes;
@@ -62,6 +64,14 @@ internal static class WheelListener
         return value;
     }
 
+    /// <summary>Right-button presses seen in the raw event stream (edge triggered).</summary>
+    public static int ConsumeRightClicks()
+    {
+        int value = _rightClicks;
+        _rightClicks = 0;
+        return value;
+    }
+
     private static unsafe void OnEvent(InputEventPtr eventPtr, InputDevice device)
     {
         try
@@ -74,6 +84,23 @@ internal static class WheelListener
                 return;
 
             _mouseEvents++;
+
+            try
+            {
+                int size = (int)eventPtr.sizeInBytes;
+                int baseSize = size - MouseStateSize;
+                if (baseSize >= 16 && baseSize <= 64)
+                {
+                    int buttons = Marshal.ReadInt16((IntPtr)eventPtr.data, baseSize + 24);
+                    if ((buttons & 0x02) != 0 && (_lastButtons & 0x02) == 0)
+                        _rightClicks++;
+                    _lastButtons = buttons;
+                }
+            }
+            catch
+            {
+                // ignore probe failures
+            }
 
             float value = mouse.scroll != null ? mouse.scroll.ReadValue().y : 0f;
             if (value == 0f)

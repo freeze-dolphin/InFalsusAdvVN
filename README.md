@@ -117,13 +117,15 @@ LanguageOrder = Japanese,ChineseSC,ChineseTC,English
 
 ## Scroll：鼠标滚轮导航
 
-滚轮向下 = 鼠标左键单击（翻到下一句）；滚轮向上 = 点击 LOG 按钮（打开历史记录）。
+滚轮向下 = 鼠标左键单击（翻到下一句）；滚轮向上 = 点击 LOG 按钮（打开历史记录）；
+历史记录打开时右键单击 = 关闭它。
 
 ### 用法
 
 * 剧情中滚轮向下：推进一句（等同左键点击）。
 * 剧情中滚轮向上：打开历史记录；历史记录已打开时滚轮交还给面板，不会在背后推进剧情。
-* 其他界面不受影响，仍是游戏原本的滚轮行为（列表 / 选歌等）。
+* 历史记录打开时**右键单击**：像点击关闭按钮一样淡出关闭面板。
+* 其他界面不受影响，仍是游戏原本的滚轮 / 右键行为（列表 / 选歌等）。
 
 ### 配置
 
@@ -131,9 +133,10 @@ LanguageOrder = Japanese,ChineseSC,ChineseTC,English
 [Scroll]
 WheelDownAdvances = true
 WheelUpOpensLog = true
+RightClickClosesLog = true
 ```
 
-两项可单独关闭。
+三项可单独关闭。
 
 ### 实现要点
 
@@ -382,14 +385,17 @@ Speaker name and history are handled on top of that:
 
 ## Scroll: mouse wheel navigation
 
-Wheel down acts like a left click (next line); wheel up acts like the LOG button (open history).
+Wheel down acts like a left click (next line); wheel up acts like the LOG button (open history);
+right click closes the history while it is open.
 
 ### Usage
 
 * Wheel down in the story: advance one line (identical to a left click).
 * Wheel up in the story: open the history; while it is open the wheel belongs to the panel and never
   advances the story behind it.
-* Other screens are unaffected and keep the game's own wheel behaviour (lists, song select, ...).
+* Right click while the history is open: close it, exactly like its quit button (fade out).
+* Other screens are unaffected and keep the game's own wheel / right-click behaviour (lists, song
+  select, ...).
 
 ### Configuration
 
@@ -397,9 +403,10 @@ Wheel down acts like a left click (next line); wheel up acts like the LOG button
 [Scroll]
 WheelDownAdvances = true
 WheelUpOpensLog = true
+RightClickClosesLog = true
 ```
 
-Both can be disabled independently.
+All three can be disabled independently.
 
 ### How it works
 

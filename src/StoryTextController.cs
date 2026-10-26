@@ -604,6 +604,40 @@ internal sealed class StoryTextController
         }
     }
 
+    /// <summary>
+    /// Closes the LOG panel the way its own quit button does: the container fades out and the tween
+    /// completion callback (ChatLogContainer._cS) deactivates it, then StoryScene.OnQuitCallback runs
+    /// the scene-side cleanup. Calling SetActive(false) directly instead leaves the panel unusable.
+    /// </summary>
+    public bool CloseLog(IntPtr scene)
+    {
+        try
+        {
+            if (scene == IntPtr.Zero || _bindings.SceneChatLogOffset <= 0)
+                return false;
+
+            IntPtr containerPtr = GameBindings.ReadPtr(scene, _bindings.SceneChatLogOffset);
+            if (containerPtr == IntPtr.Zero)
+                return false;
+
+            var container = new ifapp.Game.Scenes.Story.ChatLogContainer(containerPtr);
+            UnityEngine.GameObject host = container.gameObject;
+            if (host == null || !host.activeInHierarchy)
+                return false;
+
+            // ChatLogContainer._bS starts the fade-out tween; its completion callback (_cS)
+            // deactivates the panel and runs OnQuitCallback (the scene-side restore).
+            container._bS();
+            _log("LOG panel closing (fade out via ChatLogContainer._bS).");
+            return true;
+        }
+        catch (Exception e)
+        {
+            _debug("closing the LOG panel threw: " + e.Message);
+            return false;
+        }
+    }
+
     /// <summary>True when the LOG panel currently holds the screen.</summary>
     public bool IsLogOpen(IntPtr scene)
     {

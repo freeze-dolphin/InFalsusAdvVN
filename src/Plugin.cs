@@ -17,7 +17,7 @@ namespace InFalsusAdvVN;
 public sealed class Plugin : BasePlugin
 {
     public const string Guid = "aria.infalsus.advvn";
-    public const string Version = "1.0.3";
+    public const string Version = "1.0.4";
 
     private const int RendererEnforceFrames = 120;
 
@@ -34,6 +34,7 @@ public sealed class Plugin : BasePlugin
     private static ConfigEntry<bool> _visibilityEntry;
     private static ConfigEntry<bool> _wheelAdvanceEntry;
     private static ConfigEntry<bool> _wheelOpenLogEntry;
+    private static ConfigEntry<bool> _rightClickEntry;
 
     private static GameBindings _bindings;
     private static StoryTextController _controller;
@@ -75,6 +76,8 @@ public sealed class Plugin : BasePlugin
         _wheelAdvanceEntry = Config.Bind(SectionScroll, "WheelDownAdvances", true,
             "Mouse wheel down advances the story, like a left click (drives the scene's own input " +
             "trigger through StoryScene._dp).");
+        _rightClickEntry = Config.Bind(SectionScroll, "RightClickClosesLog", true,
+            "Right click closes the story history (LOG) panel while it is open, like its quit button.");
         _wheelOpenLogEntry = Config.Bind(SectionScroll, "WheelUpOpensLog", true,
             "Mouse wheel up opens the story history (LOG) panel, like clicking the LOG button.");
         _visibilityEntry = Config.Bind(SectionLanguage, "ManageRendererVisibility", false,
@@ -243,6 +246,7 @@ public sealed class Plugin : BasePlugin
         try
         {
             PollMouseWheel();
+            PollRightClick();
         }
         catch (Exception e)
         {
@@ -444,6 +448,52 @@ public sealed class Plugin : BasePlugin
         }
     }
 
+
+    /// <summary>
+    /// Right click closes the LOG panel while it is open. The panel is closed through the container's
+    /// own quit callback (fade out + scene cleanup), never by deactivating it directly.
+    /// </summary>
+    private static void PollRightClick()
+    {
+        if (_faulted || _controller == null || _rightClickEntry == null || !_rightClickEntry.Value)
+            return;
+
+        bool deviceEdge = false;
+        try
+        {
+            Mouse mouse = Mouse.current;
+            deviceEdge = mouse != null && mouse.rightButton != null && mouse.rightButton.wasPressedThisFrame;
+        }
+        catch
+        {
+            // device query is optional; the event stream below is authoritative
+        }
+
+        int eventEdges = WheelListener.ConsumeRightClicks();
+        if (!deviceEdge && eventEdges == 0)
+            return;
+
+        if (_verboseEntry != null && _verboseEntry.Value)
+            _log.LogInfo($"[debug] right click: deviceEdge={deviceEdge} eventEdges={eventEdges}");
+
+        StoryScene scene = FindStoryScene();
+        if (scene == null)
+            return;
+
+        IntPtr scenePtr = IL2CPP.Il2CppObjectBaseToPtr(scene);
+        bool open = _controller.IsLogOpen(scenePtr);
+        if (_verboseEntry != null && _verboseEntry.Value)
+            _log.LogInfo("[debug] right click: logOpen=" + open);
+
+        if (!open)
+            return;
+
+        bool closed = _controller.CloseLog(scenePtr);
+        if (_verboseEntry != null && _verboseEntry.Value)
+            _log.LogInfo("[debug] right click: CloseLog=" + closed);
+        if (closed)
+            _log.LogInfo("Right click -> LOG panel closed.");
+    }
     private static float ReadWheelDelta(out int devices, out string report)
     {
         devices = 0;

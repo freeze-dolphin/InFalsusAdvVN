@@ -66,6 +66,7 @@ internal sealed class GameBindings
     public int EntryNameOffset;                // characterName (FastText)
     public int EntryTextsOffset;               // chatTexts (FastText[])
     public int EntryIdOffset;                  // debug_uniqueId (StoryStringId)
+
     public IntPtr NameContainerClass;
     public IntPtr NameContainerSetMethod;   // StoryNameContainer._yO(Str.DynamicString)
 
