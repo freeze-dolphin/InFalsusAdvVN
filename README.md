@@ -172,14 +172,19 @@ WheelDownAdvances = true
 WheelUpOpensLog = true
 
 [Advanced]
-RewriteEngineText = false
+RefreshOpenLog = true
+RefreshPhoneChat = true
 
 [Debug]
 VerboseLogging = false
 ```
 
-* `Advanced/RewriteEngineText`：额外替换 `StoryState.TextBoxState.CurrentText` 里的文本（默认关闭）。
+* `Advanced/RefreshOpenLog`：切换语言时重译已经打开的 LOG（历史记录）面板。
+* `Advanced/RefreshPhoneChat`：切换语言时重译已经显示在屏幕上的手机聊天气泡。
 * `Debug/VerboseLogging`：输出每条解析到的剧情 id 与每次文本更新（默认关闭）。
+
+> 模组**不会**写入 `StoryState.TextBoxState.CurrentText`：该结构体的改写会破坏游戏自己的文本状态，
+> 在剧情节点结束时触发空引用崩溃，相关代码已移除。
 
 > 旧版本配置在 `[General]` 节下，现已改名 `[LanguageSwitch]`；如需保留旧设置，把键值手工搬过去。
 
@@ -434,15 +439,19 @@ WheelDownAdvances = true
 WheelUpOpensLog = true
 
 [Advanced]
-RewriteEngineText = false
+RefreshOpenLog = true
+RefreshPhoneChat = true
 
 [Debug]
 VerboseLogging = false
 ```
 
-* `Advanced/RewriteEngineText`: also replace the text stored in `StoryState.TextBoxState.CurrentText`
-  (off by default).
+* `Advanced/RefreshOpenLog`: re-translate an already open LOG (history) panel when the language changes.
+* `Advanced/RefreshPhoneChat`: re-translate the phone chat bubbles that are already on screen.
 * `Debug/VerboseLogging`: log every resolved story id and every applied text update (off by default).
+
+> The mod never writes `StoryState.TextBoxState.CurrentText`: overwriting that structure corrupts the
+> game's own text state and crashed the game when a story node ended, so the code for it was removed.
 
 > Older versions used the `[General]` section; it is now `[LanguageSwitch]`. Copy the old keys over if
 > you want to keep your settings.

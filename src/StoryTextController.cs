@@ -248,98 +248,6 @@ internal sealed class StoryTextController
                 go.SetActive(false);
         }
     }
-    // ---------------------------------------------------------------- apply
-
-    /// <summary>Applies a translated line to the story state and the matching renderer set.</summary>
-    public bool Apply(IntPtr scene, string storyStringId, string text, int localization, int gameLocalization)
-    {
-        if (string.IsNullOrEmpty(text))
-            return false;
-
-        _log("Apply: step 1/3 - rewriting StoryTextBoxState.CurrentText");
-        UpdateEngineText(scene, storyStringId, text, gameLocalization);
-
-        IntPtr target = GameBindings.ReadPtr(scene, RendererSetOffsetFor(localization));
-        if (target == IntPtr.Zero)
-        {
-            _log("Apply: no renderer set is available on the scene; stopping.");
-            return false;
-        }
-
-        _log("Apply: step 2/3 - activating the renderer set and writing into " +
-             GameBindings.ArrayLength(target) + " FastText renderer(s)");
-        PrepareRendererSet(scene, localization, _manageVisibility);
-
-        bool applied = SetRendererText(target, text, localization);
-        _log("Apply: finished");
-        return applied;
-    }
-
-    /// <summary>
-    /// Rewrites the Str.DynamicString the engine already holds for this line: the value is copied out,
-    /// the pointer field that carries the old text is swapped for the new line, and the value is
-    /// written back. Returns the address of the rewritten value, which is also what the renderers get.
-    /// </summary>
-    /// <summary>
-    /// Replaces the Str.DynamicString the engine holds for the current line with a value built from
-    /// the translated text. The reveal tween slices this value, so without it the tween keeps writing
-    /// the game's own language back over the line.
-    /// </summary>
-    private IntPtr UpdateEngineText(IntPtr scene, string storyStringId, string newText, int gameLocalization)
-    {
-        int size = _bindings.DynamicStringSize;
-        if (size < 8 || size > 256)
-        {
-            _debug("DynamicString size looks wrong (" + size + "); skipping state update");
-            return IntPtr.Zero;
-        }
-
-        IntPtr state = GameBindings.ReadPtr(scene, _bindings.SceneStateOffset);
-        IntPtr textBox = state == IntPtr.Zero ? IntPtr.Zero : GameBindings.ReadPtr(state, _bindings.StateTextBoxOffset);
-        if (textBox == IntPtr.Zero)
-        {
-            _debug("story text box state is null; engine text left untouched");
-            return IntPtr.Zero;
-        }
-
-        try
-        {
-            var line = new Str.DynamicString(newText);
-            IntPtr boxed = IL2CPP.Il2CppObjectBaseToPtr(line);
-            IntPtr data = boxed == IntPtr.Zero ? IntPtr.Zero : IL2CPP.il2cpp_object_unbox(boxed);
-            if (data == IntPtr.Zero)
-            {
-                _debug("could not unbox the built DynamicString");
-                return IntPtr.Zero;
-            }
-
-            IntPtr address = textBox + _bindings.CurrentTextOffset;
-            byte[] bytes = new byte[size];
-            Marshal.Copy(data, bytes, 0, bytes.Length);
-            Marshal.Copy(bytes, 0, address, bytes.Length);
-
-            if (_bindings.DisplayCountOffset > 0 && _bindings.DisplayCountOffset < 0x200)
-                GameBindings.WriteInt(textBox, _bindings.DisplayCountOffset, newText.Length);
-
-            PinString(boxed); // keep the boxed DynamicString (and its string) alive
-            _debug($"CurrentText <- DynamicString({newText.Length} chars), display count updated");
-            return address;
-        }
-        catch (Exception e)
-        {
-            _debug("engine text update threw: " + e.Message);
-            return IntPtr.Zero;
-        }
-    }
-    private readonly System.Collections.Generic.List<uint> _pinnedStrings = new System.Collections.Generic.List<uint>();
-
-    private void PinString(IntPtr il2cppString)
-    {
-        if (il2cppString == IntPtr.Zero)
-            return;
-        _pinnedStrings.Add(Il2.Pin(il2cppString));
-    }
-
     private static bool LooksLikeText(IntPtr il2cppString)
     {
         try
@@ -785,19 +693,24 @@ internal sealed class StoryTextController
             if (containerPtr == IntPtr.Zero)
                 return false;
 
+            _debug("log: container found");
             var container = new ifapp.Game.Scenes.Story.ChatLogContainer(containerPtr);
             UnityEngine.GameObject host = container.gameObject;
             if (host == null || !host.activeSelf)
                 return false;   // closed: it will be built in the selected language when opened
 
+            _debug("log: panel is open");
             EnsureReverseIndex();
             if (_textToId == null)
                 return false;
 
+            _debug("log: collecting entries");
             Il2CppReferenceArray<UnityEngine.Component> entries =
-                container.GetComponentsInChildren(Il2CppType.Of<ifapp.Game.Scenes.Story.ChatLogEntryContainer>(), true);
+                container.GetComponentsInChildren(Il2CppType.Of<ifapp.Game.Scenes.Story.ChatLogEntryContainer>(), false);
             if (entries == null || entries.Length == 0)
                 return false;
+
+            _debug("log: rewriting " + entries.Length + " entries");
 
             int updated = 0;
             for (int i = 0; i < entries.Length; i++)
@@ -900,6 +813,7 @@ internal sealed class StoryTextController
             if (localization == 0)
                 return false;
 
+            _debug("phone: searching container");
             var container = UnityEngine.Object.FindObjectOfType<ifapp.Game.Scenes.Story.PhoneChatContainer>();
             if (container == null)
                 return false;
@@ -908,14 +822,18 @@ internal sealed class StoryTextController
             if (host == null || !host.activeInHierarchy)
                 return false;
 
+            _debug("phone: container is visible");
             EnsureReverseIndex();
             if (_textToId == null)
                 return false;
 
+            _debug("phone: collecting texts");
             Il2CppReferenceArray<UnityEngine.Component> texts =
-                container.GetComponentsInChildren(Il2CppType.Of<FastText.FastText>(), true);
+                container.GetComponentsInChildren(Il2CppType.Of<FastText.FastText>(), false);
             if (texts == null || texts.Length == 0)
                 return false;
+
+            _debug("phone: rewriting " + texts.Length + " texts");
 
             int changed = 0;
             for (int i = 0; i < texts.Length; i++)

@@ -17,7 +17,7 @@ namespace InFalsusAdvVN;
 public sealed class Plugin : BasePlugin
 {
     public const string Guid = "aria.infalsus.advvn";
-    public const string Version = "1.0.2";
+    public const string Version = "1.0.3";
 
     private const int RendererEnforceFrames = 120;
 
@@ -28,9 +28,10 @@ public sealed class Plugin : BasePlugin
     private static ConfigEntry<string> _hotkeyEntry;
     private static ConfigEntry<string> _orderEntry;
     private static ConfigEntry<bool> _verboseEntry;
+    private static ConfigEntry<bool> _refreshPhoneEntry;
+    private static ConfigEntry<bool> _refreshLogEntry;
     private static ConfigEntry<bool> _rememberEntry;
     private static ConfigEntry<bool> _visibilityEntry;
-    private static ConfigEntry<bool> _engineTextEntry;
     private static ConfigEntry<bool> _wheelAdvanceEntry;
     private static ConfigEntry<bool> _wheelOpenLogEntry;
 
@@ -79,12 +80,13 @@ public sealed class Plugin : BasePlugin
         _visibilityEntry = Config.Bind(SectionLanguage, "ManageRendererVisibility", false,
             "Also hide the renderer sets of the other languages after switching. The set for the selected " +
             "language is always activated; enable this only if leftover text from another language remains visible.");
-        _engineTextEntry = Config.Bind("Advanced", "RewriteEngineText", false,
-            "Also replace the text stored in StoryState.TextBoxState.CurrentText. This keeps the " +
-            "typewriter in sync, but writing that structure is the most fragile interaction with the " +
-            "game; leave it off unless the visible text reverts while a line is still being revealed.");
         _verboseEntry = Config.Bind("Debug", "VerboseLogging", false,
             "Log every resolved story string id and every applied text update.");
+        _refreshPhoneEntry = Config.Bind("Advanced", "RefreshPhoneChat", true,
+            "Re-translate an already visible phone chat panel when the language changes. Turn off if " +
+            "it turns out to be involved in a crash.");
+        _refreshLogEntry = Config.Bind("Advanced", "RefreshOpenLog", true,
+            "Re-translate an already open LOG panel when the language changes.");
 
         ParseHotkey(_hotkeyEntry.Value);
         ParseLanguages(_orderEntry.Value);
@@ -176,6 +178,7 @@ public sealed class Plugin : BasePlugin
 
     // ---------------------------------------------------------------- per-frame tick
 
+
     internal static void OnFrame()
     {
         if (_faulted || _controller == null)
@@ -184,7 +187,6 @@ public sealed class Plugin : BasePlugin
         try
         {
             _frame++;
-
             if (_frame % 30 == 0)
                 TrackGameLanguage();
 
@@ -290,12 +292,29 @@ public sealed class Plugin : BasePlugin
             _log.LogInfo("[debug] " + _controller.DescribeScene(scenePtr));
 
         RefreshCurrentLine(scenePtr, selected, "hotkey");
+        Step("line refresh");
 
         if (_controller.RefreshSpeakerName(scenePtr, selected))
             _log.LogInfo("Speaker name refreshed.");
+        Step("speaker name");
 
-        _controller.RefreshOpenLog(scenePtr);
-        _controller.RefreshOpenPhoneChat();
+        if (_refreshLogEntry.Value)
+            _controller.RefreshOpenLog(scenePtr);
+        Step("log refresh");
+
+        if (_refreshPhoneEntry.Value)
+            _controller.RefreshOpenPhoneChat();
+        Step("phone chat refresh");
+    }
+
+    /// <summary>
+    /// Crash tracing: a native fault kills the process before any handler runs, so every step of the
+    /// hotkey path is logged. The last line in the log is the call that was executing.
+    /// </summary>
+    private static void Step(string name)
+    {
+        if (_verboseEntry != null && _verboseEntry.Value)
+            _log.LogInfo("[debug] step: " + name + " ok");
     }
 
 
@@ -324,9 +343,7 @@ public sealed class Plugin : BasePlugin
             if (_verboseEntry.Value)
                 _log.LogInfo("[debug] resolved " + text.Length + " chars: " + text);
 
-            bool applied = _engineTextEntry.Value
-                ? _controller.Apply(scenePtr, storyStringId, text, localization, _controller.GameLocalization)
-                : _controller.ReapplyVisible(scenePtr, text, localization);
+            bool applied = _controller.ReapplyVisible(scenePtr, text, localization);
             _log.LogInfo(applied ? "On-screen text refreshed." : "Text resolved but nothing was written to the screen (see log).");
         }
         finally
@@ -413,13 +430,17 @@ public sealed class Plugin : BasePlugin
 
         if (delta < 0f && _wheelAdvanceEntry.Value)
         {
+            Step("wheel: advance begin");
             if (_controller.AdvanceStory(scenePtr))
                 _log.LogInfo("Wheel down -> next line.");
+            Step("wheel: advance done");
         }
         else if (delta > 0f && _wheelOpenLogEntry.Value)
         {
+            Step("wheel: open log begin");
             if (_controller.OpenLog(scenePtr))
                 _log.LogInfo("Wheel up -> LOG panel.");
+            Step("wheel: open log done");
         }
     }
 

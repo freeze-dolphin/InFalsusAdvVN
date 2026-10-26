@@ -36,6 +36,7 @@ internal static class StoryLocalizationPatch
     private static Action<string> _log;
     private static int _depth;
 
+
     public static bool Installed { get; private set; }
 
     public static void Install(StoryTextController controller, Action<string> log)
@@ -172,6 +173,7 @@ internal static class StoryLocalizationPatch
     // ReSharper disable once InconsistentNaming
     private static void EndPostfix() => Exit();
 
+
     /// <summary>
     /// Before the scene renders an event: switch the language, then make sure the FastText set that
     /// matches it is the active one (StoryScene._Gp normally does this from GetCurrentLocalization()).
@@ -187,7 +189,8 @@ internal static class StoryLocalizationPatch
                 return;
 
             IntPtr scenePtr = IL2CPP.Il2CppObjectBaseToPtr(__instance);
-            _controller.PrepareRendererSet(scenePtr, Plugin.StoryLocalization, false);
+            
+                _controller.PrepareRendererSet(scenePtr, Plugin.StoryLocalization, false);
         }
         catch (Exception e)
         {
