@@ -4,11 +4,11 @@ In Falsus 剧情模式增强模组
 
 BepinEx mod that enhances Visual Novel reading experience for InFalsus.
 
-[中文](#中文) · [English](#english)
+[简体中文](#简体中文) · [English](#english)
 
 ---
 
-## 中文
+## 简体中文
 
 此模组仅对剧情模式生效
 
