@@ -210,6 +210,55 @@ VerboseLogging = false
 > 旧版本的配置在 `[General]` 节下，本版本已改名为 `[LanguageSwitch]`。
 > 升级后如需保留原有设置，把旧 `[General]` 里的键值手工搬到 `[LanguageSwitch]` 即可。
 
+## 打包 / Packaging
+
+`build/package.ps1` 生成 Thunderstore 包，**只包含发布需要的文件**（源码、`.csproj`、`bin/obj`、
+`.git` 一律不进包）：
+
+```
+dist/InFalsusAdvVN-<version>.zip
+├─ manifest.json
+├─ icon.png
+├─ README.md
+├─ CHANGELOG.md
+├─ LICENSE
+└─ BepInEx/plugins/InFalsusAdvVN/InFalsusAdvVN.dll
+```
+
+```bat
+:: 推荐：包装器。它以「进程级」-ExecutionPolicy Bypass 调用脚本，
+:: 因此 AllSigned / Restricted 策略的机器也能直接运行，且不修改系统策略。
+build\package.cmd                        :: 本机打包（检测到游戏 interop 时会先 dotnet build -c Release）
+build\package.cmd -Version 1.1.0         :: 指定版本
+build\package.cmd -SkipBuild -ExpectedTag v1.0.0
+build\package.cmd -DllPath bin\Release\InFalsusAdvVN.dll
+```
+
+如果直接调用 `.ps1`，请按进程指定策略（同样不改全局设置）：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build\package.ps1 -SkipBuild
+```
+
+脚本会校验 `manifest.json` 的必填字段、`icon.png` 必须是 256×256，并在打包后重新打开 zip
+确认必需文件齐全、且不含 `.cs` / `.csproj` / `.git` / `bin` / `obj` 等发布不需要的内容。
+
+> **CI 无法编译**：构建依赖 Il2CppInterop 从游戏本体生成的 interop 程序集（`Game.dll`、`Str.dll` …），
+> 它们不属于本仓库。因此仓库内提交了 `prebuilt/InFalsusAdvVN.dll` 供 CI 打包，
+> 详见 [prebuilt/README.md](prebuilt/README.md)。改动源码 / 版本后请同步刷新该文件。
+
+## 自动发布 / Automatic releases
+
+`.github/workflows/release.yml`：推送 `v*` tag 时自动调用打包脚本并创建 GitHub Release
+（附带 zip 与 `SHA256SUMS.txt`）；也可在 Actions 页面手动 dispatch 并填写 tag。
+tag 与 `manifest.json` 的 `version_number` 不一致时工作流会失败，避免发出错版本的包。
+
+```powershell
+# 发版：改 manifest.json 的 version_number（并刷新 prebuilt/），然后
+git tag v1.0.0
+git push origin v1.0.0
+```
+
 ## 已知限制 / Known limitations
 
 * 剧情文本之外的 UI 文本不随快捷键变化（这是设计目标）。
@@ -231,10 +280,11 @@ dotnet build -c Release
 BepInEx / interop 程序集，可用 `-p:BepInExDir=<路径>` 覆盖；构建后会把 dll 放进本包的
 `BepInEx/plugins/InFalsusAdvVN/`。
 
+## 许可证 / License
+
+GNU General Public License v3.0 — 见 [LICENSE](LICENSE)。
+
 ## 致谢 / Credits
 
 * BepInEx 团队（IL2CPP 运行时与 Il2CppInterop）。
 * 逆向分析使用 REA（IL2CPP 元数据 + 原生代码）。
-## ??? / License
-
-GNU General Public License v3.0 � ? [LICENSE](LICENSE)?

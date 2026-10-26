@@ -35,6 +35,11 @@
 .PARAMETER SkipBuild
     Never invoke dotnet, always use prebuilt/ (unless -DllPath is given).
 
+.NOTES
+    On machines whose execution policy is AllSigned/Restricted, run the wrapper instead; it
+    applies -ExecutionPolicy Bypass to its own process only:
+        build\package.cmd -SkipBuild -ExpectedTag v1.0.0
+
 .EXAMPLE
     ./build/package.ps1 -Version 1.1.0
     ./build/package.ps1 -SkipBuild -ExpectedTag v1.0.0
