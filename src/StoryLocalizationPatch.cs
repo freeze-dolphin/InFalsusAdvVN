@@ -109,6 +109,30 @@ internal static class StoryLocalizationPatch
             log("StoryLocalizationPatch (log) failed: " + e.Message);
         }
 
+        // Phone chat lines are resolved by StoryCommandProcessor.ProcessPhoneChatCommand and delivered
+        // to PhoneChatContainer._GS through StoryPhoneChatMessageAddedEvent, so they need the same
+        // bracket or the phone bubbles always keep the game language.
+        try
+        {
+            MethodInfo phone = AccessTools.Method(typeof(StoryCommandProcessor), "ProcessPhoneChatCommand");
+            if (phone != null)
+            {
+                harmony.Patch(phone,
+                    prefix: new HarmonyMethod(typeof(StoryLocalizationPatch), nameof(BeginPrefix)),
+                    postfix: new HarmonyMethod(typeof(StoryLocalizationPatch), nameof(EndPostfix)));
+                patched++;
+            }
+            else
+            {
+                log("StoryLocalizationPatch: StoryCommandProcessor.ProcessPhoneChatCommand not found " +
+                    "(phone chat stays in the game language).");
+            }
+        }
+        catch (Exception e)
+        {
+            log("StoryLocalizationPatch (phone) failed: " + e.Message);
+        }
+
         Installed = patched >= 2;
         log("StoryLocalizationPatch installed on " + patched + " story-localization hook(s).");
     }

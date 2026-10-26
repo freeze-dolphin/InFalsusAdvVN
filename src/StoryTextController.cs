@@ -884,6 +884,89 @@ internal sealed class StoryTextController
         return changed;
     }
 
+    /// <summary>
+    /// Re-translates the phone chat overlay. Its bubbles are created from
+    /// StoryPhoneChatMessageAddedEvent, and that event carries a message that
+    /// StoryCommandProcessor.ProcessPhoneChatCommand already resolved (in the language that was
+    /// active at that moment). Bubbles that are already on screen therefore have to be rewritten
+    /// the same way the LOG entries are: look the current text up in the translation table, then
+    /// resolve it again in the selected language.
+    /// </summary>
+    public bool RefreshOpenPhoneChat()
+    {
+        try
+        {
+            int localization = Plugin.StoryLocalization;
+            if (localization == 0)
+                return false;
+
+            var container = UnityEngine.Object.FindObjectOfType<ifapp.Game.Scenes.Story.PhoneChatContainer>();
+            if (container == null)
+                return false;
+
+            UnityEngine.GameObject host = container.gameObject;
+            if (host == null || !host.activeInHierarchy)
+                return false;
+
+            EnsureReverseIndex();
+            if (_textToId == null)
+                return false;
+
+            Il2CppReferenceArray<UnityEngine.Component> texts =
+                container.GetComponentsInChildren(Il2CppType.Of<FastText.FastText>(), true);
+            if (texts == null || texts.Length == 0)
+                return false;
+
+            int changed = 0;
+            for (int i = 0; i < texts.Length; i++)
+            {
+                UnityEngine.Component component = texts[i];
+                if (component == null)
+                    continue;
+
+                var renderer = new FastText.FastText(IL2CPP.Il2CppObjectBaseToPtr(component));
+                string current = renderer == null ? null : renderer.GetText();
+                if (IsUnusable(current))
+                    continue;
+
+                string id;
+                if (_textToId.TryGetValue(current, out id))
+                {
+                    string text = LookupTranslation(id, localization);
+                    if (!IsUnusable(text) && text != current)
+                    {
+                        SetFastText(renderer, text, localization);
+                        changed++;
+                    }
+                    continue;
+                }
+
+                if (FindNameMapping() == null)
+                    continue;
+
+                Str.DynamicString resolved = _nameMapping.Get(
+                    Str.DynamicStringTypeFlags.StoryName,
+                    (Str.Strings.Localization)localization,
+                    new ifapp.Game.Data.RawStoryName(current));
+
+                string name = resolved == null ? null : resolved.CreateString();
+                if (!IsUnusable(name) && name != current)
+                {
+                    SetFastText(renderer, name, localization);
+                    changed++;
+                }
+            }
+
+            _debug($"phone chat texts refreshed: {changed}/{texts.Length}");
+            return changed > 0;
+        }
+        catch (Exception e)
+        {
+            _debug("phone chat refresh threw: " + e.Message);
+            return false;
+        }
+    }
+
     private void SetFastText(FastText.FastText renderer, string text, int localization)
     {
         int previous = GameLocalization;

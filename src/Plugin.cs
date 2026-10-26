@@ -295,6 +295,7 @@ public sealed class Plugin : BasePlugin
             _log.LogInfo("Speaker name refreshed.");
 
         _controller.RefreshOpenLog(scenePtr);
+        _controller.RefreshOpenPhoneChat();
     }
 
 
