@@ -8,11 +8,13 @@
 
         manifest.json
         icon.png
-        README.md
+        README.md    (README_thunderstore.md, renamed)
         LICENSE
         BepInEx/plugins/InFalsusAdvVN/InFalsusAdvVN.dll
 
-    Source code, the project file, git metadata and build intermediates are never copied.
+    Source code, the project file, git metadata and build intermediates are never copied, and the
+    repository README.md (developer documentation) is not shipped: the package uses the user-facing
+    README_thunderstore.md instead.
 
     The plugin assembly is taken from a local build when the BepInEx/interop install exists,
     otherwise from the committed prebuilt/InFalsusAdvVN.dll (CI has no game assemblies to
@@ -166,7 +168,7 @@ try {
     $pluginDir = Join-Path (Join-Path $stage 'BepInEx\plugins') $packageName
     New-Item -ItemType Directory -Path $pluginDir -Force | Out-Null
 
-    $rootFiles = @('manifest.json', 'icon.png', 'README.md', 'LICENSE')
+    $rootFiles = @('manifest.json', 'icon.png', 'LICENSE')
     foreach ($file in $rootFiles) {
         $source = Join-Path $root $file
         if (-not (Test-Path $source)) {
@@ -176,6 +178,12 @@ try {
         Copy-Item $source (Join-Path $stage $file)
         Write-Note "+ $file"
     }
+
+    # Thunderstore shows README.md; the repository README is developer documentation and is not shipped.
+    $thunderstoreReadme = Join-Path $root 'README_thunderstore.md'
+    if (-not (Test-Path $thunderstoreReadme)) { Fail 'README_thunderstore.md is missing' }
+    Copy-Item $thunderstoreReadme (Join-Path $stage 'README.md')
+    Write-Note '+ README.md (from README_thunderstore.md)'
 
     Copy-Item $assembly (Join-Path $pluginDir "$packageName.dll")
     Write-Note "+ BepInEx/plugins/$packageName/$packageName.dll"
