@@ -237,4 +237,4 @@ BepInEx / interop 程序集，可用 `-p:BepInExDir=<路径>` 覆盖；构建后
 * 逆向分析使用 REA（IL2CPP 元数据 + 原生代码）。
 ## ??? / License
 
-GNU General Public License v3.0 � ? [LICENSE](LICENSE)?
+GNU General Public License v3.0 � ? [LICENSE](LICENSE)?

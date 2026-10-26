@@ -1,0 +1,99 @@
+name: Release
+
+# Publishes the Thunderstore package to a GitHub release.
+#
+# The package itself is produced by build/package.ps1, which is the single source of truth for
+# what goes into the zip (see the script header). A runner cannot compile this mod - the build
+# needs the game's Il2CppInterop assemblies, which are not redistributable - so the workflow
+# packages the committed prebuilt/InFalsusAdvVN.dll and refuses to release when its version does
+# not match the pushed tag.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g. v1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  package:
+    name: Package and release
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve tag
+        id: tag
+        shell: pwsh
+        run: |
+          $tag = if ('${{ github.event_name }}' -eq 'workflow_dispatch') {
+              '${{ inputs.tag }}'
+          } else {
+              '${{ github.ref_name }}'
+          }
+
+          if ([string]::IsNullOrWhiteSpace($tag)) {
+              throw 'No tag to release: push a v* tag or pass the tag input.'
+          }
+
+          $version = $tag -replace '^[vV]', ''
+          "tag=$tag"         >> $env:GITHUB_OUTPUT
+          "version=$version" >> $env:GITHUB_OUTPUT
+          Write-Host "Releasing $tag (version $version)"
+
+      - name: Build Thunderstore package
+        shell: pwsh
+        run: |
+          ./build/package.ps1 -SkipBuild -ExpectedTag '${{ steps.tag.outputs.tag }}' -OutputDir dist
+
+      - name: Write checksums
+        shell: pwsh
+        run: |
+          $lines = Get-ChildItem dist/*.zip | ForEach-Object {
+              '{0}  {1}' -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash, $_.Name
+          }
+          $lines | Set-Content dist/SHA256SUMS.txt -Encoding utf8
+          $lines | ForEach-Object { Write-Host $_ }
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: InFalsusAdvVN-${{ steps.tag.outputs.version }}
+          path: |
+            dist/*.zip
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: InFalsusAdvVN ${{ steps.tag.outputs.version }}
+          body: |
+            Thunderstore package: `InFalsusAdvVN-${{ steps.tag.outputs.version }}.zip`
+
+            Install with r2modman/Thunderstore, or unpack the zip into the game folder
+            (`BepInEx/plugins/InFalsusAdvVN/InFalsusAdvVN.dll`).
+
+            Requires `BepInExPack_IL2CPP` 6.0.788 or compatible.
+          files: |
+            dist/*.zip
+            dist/SHA256SUMS.txt
+          fail_on_unmatched_files: true
+          draft: false
+          prerelease: ${{ contains(steps.tag.outputs.version, '-') }}
