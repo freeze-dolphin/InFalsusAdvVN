@@ -1,0 +1,9 @@
+{
+  "name": "InFalsusAdvVN",
+  "version_number": "1.0.0",
+  "website_url": "https://github.com/freeze-dolphin/InFalsusAdvVN",
+  "description": "BepinEx mod that enhances Visual Novel reading experience for InFalsus.",
+  "dependencies": [
+    "BepInEx-BepInExPack_IL2CPP-6.0.788"
+  ]
+}
